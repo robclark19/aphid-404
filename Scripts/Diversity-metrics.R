@@ -2,7 +2,7 @@ library(vegan)
 library(tidyverse)
 
 #load data
-vegFile <- "C:/Users/megbl/OneDrive/Documents/Grad School/MS Research/MIAphids/aphid-404/Data/transect_vegetation_data_2021-11-10_cleaned.csv"
+vegFile <- "C:/Users/megbl/OneDrive/Documents/Grad School/MS Research/MIAphids/aphid-404/Data/transect_vegetation_data_2022-01-25_cleaned.csv"
 vegData <- read.csv(vegFile)
 
 bycatchFile <- "C:/Users/megbl/OneDrive/Documents/Grad School/MS Research/MIAphids/Data/raw_insect_bycatch_2021-11-15.csv"

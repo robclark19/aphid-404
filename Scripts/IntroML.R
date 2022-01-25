@@ -2,7 +2,7 @@ library(caret)
 library(tidyverse)
 
 
-vegFile <- "./Data/transect_vegetation_data_2022_01_25_cleaned.csv"
+vegFile <- "./Data/transect_vegetation_data_2022-01-25_cleaned.csv"
 vegData <- read.csv(vegFile)
 complete.cases(vegData) #No NA found
 
@@ -15,16 +15,16 @@ complete.cases(vegData) #No NA found
 #creatTimeSlices can be better for time series data over random
 
 # we dont want to use these non-plant variables
-vegetData$date <- NULL
-vegetData$site <- NULL
-vegetData$transect <- NULL
-vegetData$sample_period <- NULL
+vegData$date <- NULL
+vegData$site <- NULL
+vegData$transect <- NULL
+vegData$sample_period <- NULL
 
 # select only the known data
 
 
 # change to incidence based data rather coverage
-vegetData <- vegetData %>% mutate_if(is.numeric, ~1 * (. != 0))
+vegData <- vegData %>% mutate_if(is.numeric, ~1 * (. != 0))
 
 
 
