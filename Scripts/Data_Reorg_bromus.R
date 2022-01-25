@@ -48,6 +48,12 @@ vegetData <- relocate(interdf, c('sample_period', 'aphid_presence'), .after = 't
 #Problems: bringing whole transects into the data rather than partials
 #creatTimeSlices can be better for time series data over random
 
+#import data
+vegFile <- "./Data/transect_vegetation_data_2021-11-10_cleaned.csv"
+vegData <- read.csv(vegFile)
+
+vegetData <- vegData
+
 # we dont want to use these non-plant variables
 vegetData$date <- NULL
 vegetData$site <- NULL
@@ -58,13 +64,14 @@ vegetData$sample_period <- NULL
 
 
 # change to incidence based data rather coverage
-vegetData <- vegetData %>% mutate_if(is.numeric, ~1 * (. != 0))
+vegetData <- vegetData %>% mutate_if(is.numeric, ~1 * (. != 0)) %>% as.data.frame()
+
+vegetData$bromus.inermis <- as.factor(vegetData$bromus.inermis) 
 
 
-
-trainIndex <- createDataPartition(vegData$aphid_presence, p = 0.8, list = FALSE)
-validData <- vegData[-trainIndex,]
-trainData <- vegData[trainIndex,]
+trainIndex <- createDataPartition(vegetData$bromus.inermis, p = 0.7, list = FALSE)
+validData <- vegetData[-trainIndex,]
+trainData <- vegetData[trainIndex,]
 
 
 
@@ -87,17 +94,17 @@ metric <- "Accuracy"
 # b) nonlinear algorithms
 # CART
 set.seed(7)
-fit.cart <- train(aphid_presence~., data=trainData, method="rpart", metric=metric, trControl=control)
+fit.cart <- train(bromus.inermis~., data=trainData, method="rpart", metric=metric, trControl=control)
 # kNN
 set.seed(7)
-fit.knn <- train(aphid_presence~., data=trainData, method="knn", metric=metric, trControl=control)
+fit.knn <- train(bromus.inermis~., data=trainData, method="knn", metric=metric, trControl=control)
 # c) advanced algorithms
 # SVM
 set.seed(7)
-fit.svm <- train(aphid_presence~., data=trainData, method="svmRadial", metric=metric, trControl=control)
+fit.svm <- train(bromus.inermis~., data=trainData, method="svmRadial", metric=metric, trControl=control)
 # Random Forest
 set.seed(7)
-fit.rf <- train(aphid_presence~., data=trainData, method="rf", metric=metric, trControl=control)
+fit.rf <- train(bromus.inermis~., data=trainData, method="rf", metric=metric, trControl=control)
 
 
 # evaluate models
@@ -110,9 +117,9 @@ dotplot(results)
 
 
 # estimate skill of knn on the validation dataset by making a predictions set
-predictions <- predict(fit.knn, validData)
+predictions <- predict(fit.svm, validData)
 
 # compare predictions set to the validation set (make aphid_presence a factor)
-confusionMatrix(predictions, as.factor(validData$aphid_presence))
+confusionMatrix(predictions, as.factor(validData$bromus.inermis))
 
 
