@@ -85,6 +85,10 @@ confusionMatrix(predictions, as.factor(validData$aphid_presence))
 
 # Bycatch ML #####
 
+bycatchFile <- "./Data/raw_insect_bycatch_2022-02-28_cleaned.csv"
+bycatchdat <- read.csv(bycatchFile)
+
+str(bycatchdat)
 
 
 
