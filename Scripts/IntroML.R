@@ -142,3 +142,4 @@ dotplot(results)
 predictions <- predict(fit.knn, validData)
 
 confusionMatrix(predictions, as.factor(validData$Acrididae)) 
+
