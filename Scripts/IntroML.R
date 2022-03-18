@@ -143,3 +143,74 @@ predictions <- predict(fit.knn, validData)
 
 confusionMatrix(predictions, as.factor(validData$Acrididae)) 
 
+## Matt's consult ML stuff -----------------------------------------------------------
+
+insects_interest <- c("diptera", "delphacidae", "miridae", "coccinellidae",
+                      'nabidae', 'psyllidae', 'scraptiidae', 'melyridae', 'braconidae', 
+                      'microhymenoptera')
+
+train_control <- trainControl(method = "cv", number = 10, p = 0.7)
+
+response_vars <- c("pseudoroegneria.spicata",
+                   "bromus.tectorum", "alopecurus.pratensis", "bromus.inermis", 
+                   'thinopyrum.intermedium.ssp.intermedium', 'arrhenatherum.elatius',
+                   "X", "Y", "non_cereal_crops", "forest_and_tree_crops", "cereal_crops",
+                   "tree_fruit_crops", "development",
+                   "wetland_open_water","pasture_or_barren")
+
+
+model_data %>%
+  dplyr::select(all_of(response_vars)) %>%
+  cor() %>%
+  corrplot(type = "upper")
+
+
+ml_formula <- as.formula(paste0(insects_interest[4],
+                                "~",
+                                paste(response_vars, collapse = " + ")))
+
+
+
+
+
+training_percentage <- 0.7
+set.seed(7)
+training_indices <- sample(x = 1:nrow(model_data),
+                           size = training_percentage*nrow(model_data),
+                           replace = FALSE)
+
+set.seed(7)
+rf_model <- train(form = ml_formula,
+                  data = model_data,
+                  method="rf",
+                  trControl=train_control,
+                  subset = training_indices)
+rf_model
+
+
+varImp(rf_model)
+
+rf_importance <- varImp(rf_model) %>%
+  pluck("importance") %>% 
+  rownames_to_column() %>% 
+  rename("variable" = rowname) %>% 
+  arrange(Overall) %>%
+  mutate(variable = forcats::fct_inorder(variable)) %>%
+  rename(imp = Overall)
+
+
+ggplot(rf_importance) +
+  geom_segment(aes(x = variable, y = 0, xend = variable, yend = imp), 
+               size = 1, alpha = 0.7) +
+  geom_point(aes(x = variable, y = imp), 
+             size = 2, show.legend = F, color = "blue") +
+  coord_flip() +
+  xlab("Variable") +
+  ylab("Importance") +
+  theme_bw() +
+  theme(text = element_text(size = 22),
+        axis.text.y = element_text(margin = ggplot2::margin(r = 7)),
+        panel.border = element_rect(fill = NA,
+                                    colour = "black", 
+                                    size = 1)) 
+

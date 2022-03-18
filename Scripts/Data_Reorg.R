@@ -1,6 +1,7 @@
 
 ##Use this to take raw data to cleaned
-#This file cleans the raw transect data only currently
+#First section cleans veg data
+#Second merges veg and insect
 
 #Load packages
 library(DataExplorer)
@@ -37,3 +38,32 @@ vegetData <- relocate(interdf, c('sample_period', 'aphid_presence'), .after = 't
 
 
 #write_csv(vegetData, 'transect_vegetation_data_2022-01-25_cleaned.csv')
+
+### Merging veg + insect ----------------------
+
+insect <- read_csv(file = "./Data/insect_bycatch_2022-03-17_cleaned.csv")
+
+veg <- read_csv(file = "./Data/transect_vegetation_data_2022-03-17_cleaned.csv")
+
+# Check that things line up
+unique(insect$site)[!(unique(insect$site) %in% unique(veg$site))]
+unique(veg$site)[!(unique(veg$site) %in% unique(insect$site))]
+
+anti_join(
+  x = insect,
+  y = veg,
+  by = c("date", "site", "transect", "sampling_period")
+)
+
+anti_join(
+  x = veg,
+  y = insect,
+  by = c("date", "site", "transect", "sampling_period")
+)
+
+sampling_data <- inner_join(
+  x = insect,
+  y = veg,
+  by = c("date", "site", "transect", "sampling_period")
+)
+#write_csv(sampling_data, "insect_veg_combined_2022-03-17.csv")
