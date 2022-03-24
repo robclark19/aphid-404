@@ -1,3 +1,4 @@
+#Currently calculate richness, shannon, evar
 
 library(vegan)
 library(tidyverse)
@@ -27,82 +28,59 @@ vegan_bycatchData <- dplyr::select(vegan_bycatchData, -c('date', 'transect'))
 
 
 #richness calculation with merge into 1 df
-#Fix problem where none of the bycatch merges in, only NA
 richness_veg_df <- as.data.frame(richness_veg <- specnumber(vegan_vegData))
 richness_bycatch_df <- as.data.frame(richness_bycatch <- specnumber(vegan_bycatchData))
-
-richness_merge <- merge(richness_bycatch_df, richness_veg_df, by = 'row.names', all.x = TRUE)
-richness_merge <- set_names(richness_merge, c('transect', 'bycatch_richness', 'veg_richness'))
-richLM <- lm(bycatch_richness~veg_richness, data = richness_merge)
-plot(richLM)
+richness_merge <- richness_bycatch_df %>%
+  merge(richness_veg_df, by = 'row.names', all.x = TRUE) %>%
+  set_names(c('transect', 'bycatch_richness', 'veg_richness'))
+#richLM <- lm(bycatch_richness~veg_richness, data = richness_merge)
+#plot(richLM)
 
 
 #shannon index with merge into 1 df
 shannon_veg_df <- as.data.frame(shannon_veg <- diversity(vegan_vegData))
 shannon_bycatch_df <- as.data.frame(shannon_bycatch <- diversity(vegan_bycatchData))
-shannon_merge <- merge(shannon_bycatch_df, shannon_veg_df, by = 'row.names', all.x = TRUE)
+shannon_merge <- shannon_bycatch_df %>%
+  merge(shannon_veg_df, by = 'row.names', all.x = TRUE) %>%
+  set_names(c('transect', 'bycatch_shannon', 'veg_shannon'))
 
-#Full merge into 1 dataframe
-diversity_metrics <- merge(shannon_merge, richness_merge, by = 'Row.names')
-diversity_metrics <- set_names(diversity_metrics, c('transect', 'shannon_bycatch', 'shannon_veg', 'richness_bycatch', 'richness_veg'))
-
-ggplot(diversity_metrics, aes(x = richness_bycatch)) +
-  geom_bar()
+#Merge shannon and richness
+metrics <- merge(shannon_merge, richness_merge, by = 'transect')
 
 
-
-##Consider: attach(). Attach management practices to link this with the vegan dataset
-#http://traits-dgs.nceas.ucsb.edu/workspace/r/r-tutorial-for-measuring-species-diversity/Measuring%20Diversity%20in%20R.pdf/attachment_download/file
-
-
-#Evar
-##Elinor's via Eli non-looped function then with making it looped
-Evarb <- function(x)
-{
-  #Remove taxa with zero abundance
-  x1 <- data.frame(abundance=x[x>0])
-  
-  #Calculate
-  S <- nrow(x1)
-  x1$v1 <- log(x1$abundance)
-  x1$v2 <- x1$v1/S
-  s1 <- sum(x1$v2)
-  x1$v3 <- ((x1$v1 - s1)^2)/S
-  s2 <- sum(x1$v3)
-  if(S>=1) evar <- (1 - 2/pi * atan(s2)) else evar <- NA
-  
-  return(evar)
+#Evar from https://github.com/ibartomeus/fundiv/blob/master/R/Evenness.R
+Evar <- function(A){
+  v <- rep(NA, nrow(A)) 
+  for(k in 1:nrow(A)) {
+    a <- rep(NA, ncol(A)) 
+    b <- a  
+    d <- a
+    for(i in 1:ncol(A)) {
+      a[i] <- if(A[k,i] != 0) log(A[k,i]) else 0 
+    }
+    S <- sum(A[k,] > 0)
+    for(i in 1:ncol(A)) {
+      b[i] <- a[i]/S
+    }
+    c <- sum(b)
+    for(i in 1:ncol(A)) {
+      d[i] <- if(A[k,i] !=0) (a[i]-c)^2/S else 0 
+    }
+    f <- sum(d)
+    v[k] <- (1-2/pi*atan(f))   
+  }
+  v 
 }
-evarbVVdata <- vegan_vegData
-for (i in 1:nrow(evarbVVdata)) {
-  evarbVVdata[i,] <- Evarb(evarbVVdata[i,])
-  out <- evarbVVdata[,1]
-}
-evarbVVdata <- out
 
-evar2VVdata <- Evar(vegan_vegData)
+#calculate evar for each and join to metrics
+evar_veg <- as.data.frame(Evar(vegan_vegData))
+evar_bycatch <- as.data.frame(Evar(vegan_bycatchData))
+evar_merge <- cbind(evar_bycatch, evar_veg)
+evar_merge <- set_names(evar_merge, c('bycatch_evar', 'veg_evar'))
+metrics <- cbind(metrics, evar_merge)
 
-plot(evar2VVdata~evarbVVdata) #same
+#write_csv(metrics, "diversity_metrics_2022-03-24.csv")
 
-
-Evar(vegan_vegData)
-evar_veg_df <- as.data.frame(evar_veg <- Evar(vegan_vegData))
-evar2_veg_df <- as.data.frame(evar2_veg <- Evar2(vegan_vegData))
-evar_merge <- merge(evar_veg_df, evar2_veg_df, by = 'row.names', all.x = TRUE)
-
-evar2_bycatch_df <- as.data.frame(evar2_bycatch <- Evar2(vegan_bycatchData))
-evar_merge <- merge(evar2_bycatch_df, evar2_veg_df, by = 'row.names', all.x = TRUE)
-ggplot(evar_merge, aes(evar_merge[,2], evar_merge[,3])) +
-  geom_point(position='jitter')
-
-
-bycatch_evar <- vegan_bycatchData %>%
-  Evar() %>%
-  as.data.frame()
-rownames(bycatch_evar) <- vegan_bycatchData[,2]
-merge_test <- merge(bycatch_evar, vegan_bycatchData)
-
-veg_evar <- Evar(vegan_vegData)
 
 
 
