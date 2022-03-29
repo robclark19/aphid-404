@@ -12,6 +12,8 @@ vegData <- read.csv(vegFile)
 bycatchFile <- "./Data/insect_bycatch_2022-03-17_cleaned.csv"
 bycatchData <- read.csv(bycatchFile, fileEncoding="UTF-8-BOM")
 
+metrics <- read.csv("./Data/diversity_metrics_2022-03-24.csv")
+
 #make data vegan friendly
 #need to remove all columns except the species + make the row names the transect names
 vegan_vegData <- vegData %>%
@@ -81,7 +83,21 @@ metrics <- cbind(metrics, evar_merge)
 
 #write_csv(metrics, "diversity_metrics_2022-03-24.csv")
 
-
+#Expand the site names once again. Thanks Matt Brousil
+metrics_test <- metrics %>%
+  mutate(site = str_extract(string = transect,
+                            # Pattern: Any number of characters
+                            # followed by, but not including, T[number]S[number],
+                            # with T and S being either upper or lower case
+                            pattern = ".*(?=[tT][1-6][sS][1-3])"),
+         transect_num = str_extract(string = transect,
+                                    # Upper/lowercase T[number] followed by,
+                                    # but not including, upper/lower S[number]
+                                    pattern = "[1-6](?=[s,S][1-3])"),
+         sampling_period = str_extract(string = transect,
+                                       # Upper/lower S[number] at the end of
+                                       # the string
+                                       pattern = "[0-3]$"))
 
 
 ##EcoIndR playing

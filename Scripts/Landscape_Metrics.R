@@ -100,3 +100,58 @@ lsm_c_clumpy(Eriksimp)
 # Calculate multiple metrics
 metrics = calculate_lsm(Eriksimp, 
                         what = c("lsm_c_pland", "lsm_l_ta", "lsm_l_te"))
+
+# Matt's addition ---------------------------------------------------------
+
+ggplot() +
+  geom_sf(data = rnaturalearth::ne_states(iso_a2 = "US", returnclass = "sf") %>%
+            filter(name == "Washington")) +
+  geom_sf(data = SiteBuffer_projected)
+
+
+# Megan's custom classifications
+code_table <- tribble(
+  ~code,    ~label,
+  0,        "Background",
+  1,        "Non-cereal crops",
+  2,        "Cereal crops",
+  3,        "Forest and tree crops",
+  4,        "Tree fruit crops",
+  5,        "Development",
+  6,        "Wetland/open water",
+  7,        "Pasture or barren"
+)
+
+
+reclassify(LandSectors[[1]], as.matrix(RclTable))
+
+classified_sites <- map2_df(.x = LandSectors,
+                            .y = SiteMeta$site,
+                            .f = ~{
+                              
+                              classified <- reclassify(.x, as.matrix(RclTable))
+                              
+                              
+                              pland <- lsm_c_pland(classified) %>%
+                                left_join(x = .,
+                                          y = code_table,
+                                          by = c("class" = "code")) %>%
+                                mutate(site = .y)
+                              
+                              return(pland)
+                              
+                            })
+
+land_percentage <- classified_sites %>%
+  dplyr::select(site, label, value) %>%
+  pivot_wider(names_from = "label", values_from = "value", values_fill = 0) %>%
+  clean_names() %>%
+  mutate(site = case_when(
+    site == "Smoot" ~ "Smoot Hill",
+    site == "JW trail" ~ "JW Trail",
+    TRUE ~ site))
+
+#write_csv(x = land_percentage, file = "site_landscape_percentages.csv")
+
+
+
