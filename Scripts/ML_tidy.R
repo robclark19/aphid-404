@@ -6,8 +6,6 @@ library(randomForest)
 library(ranger)
 library(lubridate)
 library(xgboost)
-library(vip)
-library(kknn)
 
 
 vegData <- read.csv("./Data/transect_vegetation_data_2022-03-17_cleaned.csv")
@@ -66,36 +64,34 @@ all_veg_recipe <-
   update_role(transect, site, date, sampling_period, new_role = "ID")
 
 #####Random Forest model
-rf_mod <- rand_forest(trees = 1000) %>% 
+rf_rmod <- rand_forest(trees = 1000) %>% 
   set_engine("ranger") %>% 
   set_mode("regression")
 #Make the RF workflow
-rf_wf <- 
+rf_rwf <- 
   workflow() %>%
-  add_model(rf_mod) %>%
+  add_model(rf_rmod) %>%
   add_formula(ml_formula)
 #Fit the RF
 set.seed(7)
-rf_fit <- rf_wf %>%
+rf_rfit <- rf_rwf %>%
   fit_resamples(folds) 
 ##Show accuracy
-collect_metrics(rf_fit)
+collect_metrics(rf_rfit)
 
 
-
-####Boosted Tree Model *****Broken
-boo_mod <- boost_tree(trees = 1000, engine = 'xgboost', mode = 'regression') 
-boo_wf <- workflow() %>%
-  add_model(boo_mod) %>%
-  add_formula(ml_formula)
+####Boosted Tree Model
+boo_rmod <- boost_tree(trees = 15) %>%
+  set_engine('xgboost') %>%
+  set_mode('regression') 
 set.seed(7)
-boo_fit <- boo_wf %>%
-  fit_resamples(folds)
-boo_fit
+boo_rfit <- boo_rmod %>%
+  fit(ml_formula, data = md_train)
+boo_rfit
 
 
 ###
-###  2  modeling with all veg, pres/abs based ---> all p/a or just bug? currently all veg and the bug
+###  2  modeling with all veg, pres/abs based ---> all veg p/a or just bug? just the bug right now
 ###
 
 #Create the model data with the veg and insect, can't keep all the bugs in until we look at specific response variables
@@ -133,19 +129,31 @@ all_veg_recipe <-
   update_role(transect, site, date, sampling_period, new_role = "ID")
 
 #####Random Forest model
-rf_mod <- rand_forest(trees = 1000) %>% 
+rf_cmod <- rand_forest(trees = 1000) %>% 
   set_engine("ranger") %>% 
   set_mode("classification")
 #Make the RF workflow
-rf_wf <- 
+rf_cwf <- 
   workflow() %>%
-  add_model(rf_mod) %>%
+  add_model(rf_cmod) %>%
   add_formula(ml_formula)
 #Fit the RF
 set.seed(7)
-rf_fit <- rf_wf %>%
+rf_cfit <- rf_cwf %>%
   fit_resamples(folds)
-rf_fit
+rf_cfit
 ##Show accuracy
-collect_metrics(rf_fit)
+collect_metrics(rf_cfit)
 
+
+####Boosted Tree Model 
+boo_cmod <- boost_tree(trees = 15) %>%
+  set_engine('xgboost',event_level = 'second') %>%
+  set_mode('classification') 
+set.seed(7)
+boo_cfit <- boo_cmod %>%
+  fit(ml_formula, data = md_train)
+boo_cfit
+bind_cols(
+  predict(boo_cfit, md_test),
+  predict(boo_cfit, md_test, type = 'prob'))
