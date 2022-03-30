@@ -1,22 +1,21 @@
 library(caret)
 library(tidyverse)
+library(tidymodels)
+library(corrplot)
 
 
-vegFile <- "./Data/transect_vegetation_data_2022-01-25_cleaned.csv"
+vegFile <- "./Data/transect_vegetation_data_2022-03-17_cleaned.csv"
 vegData <- read.csv(vegFile)
-complete.cases(vegData) #No NA found
+#complete.cases(vegData) #No NA found
 
-bycatchFile <- "C:/Users/megbl/OneDrive/Documents/Grad School/MS Research/MIAphids/Raw Data/raw_insect_bycatch_2022-02-28.csv"
+bycatchFile <- "./Data/insect_bycatch_2022-03-17_cleaned.csv"
 bycatchData <- read.csv(bycatchFile, fileEncoding="UTF-8-BOM")
-bycatchData[is.na(bycatchData)] <- 0
+
+model_data <- read.csv("./Data/insect_veg_combined_2022-03-17.csv")
 
 
 # Preliminary ML algorithm selection #####
 
-
-##Create a validation + training dataset
-#Problems: bringing whole transects into the data rather than partials
-#creatTimeSlices can be better for time series data over random
 
 # we dont want to use these non-plant variables
 vegData$date <- NULL
@@ -93,70 +92,17 @@ predictions <- predict(fit.knn, validData)
 confusionMatrix(predictions, as.factor(validData$aphid_presence))
 
 
-######Make it reusable#####################
-
-#targetBug <- bycatchData$Acrididae
-#bugName <- 'Acrididae'
-#targetBug <- as.factor(targetBug) 
-bycatchData$Acrididae <- as.factor(bycatchData$Acrididae)
-
-trainIndex <- createDataPartition(bycatchData$Acrididae, p = 0.7, list = FALSE)
-validData <- bycatchData[-trainIndex,]
-trainData <- bycatchData[trainIndex,]
-
-# view dimensions of the dataset
-dim(trainData)
-dim(validData)
-# view the types of attributes
-sapply(trainData, class)
-
-# set control and metric settings
-control <- trainControl(method="cv", number = 10)
-metric <- "Accuracy"
-
-
-
-set.seed(7)
-fit.cart <- train(Acrididae~., data=trainData, method="rpart", metric=metric, trControl=control)
-# kNN
-set.seed(7)
-fit.knn <- train(Acrididae~., data=trainData, method="knn", metric=metric, trControl=control)
-# c) advanced algorithms
-# SVM
-set.seed(7)
-fit.svm <- train(Acrididae~., data=trainData, method="svmRadial", metric=metric, trControl=control)
-# Random Forest
-set.seed(7)
-fit.rf <- train(Acrididae~., data=trainData, method="rf", metric=metric, trControl=control)
-
-# evaluate models
-# summarize accuracy of models
-results <- resamples(list(cart=fit.cart, knn=fit.knn, svm=fit.svm, rf=fit.rf))
-summary(results)
-dotplot(results)
-
-# only cart is worse than the rest, which are all 91%
-
-
-# estimate skill of knn on the validation dataset by making a predictions set
-predictions <- predict(fit.knn, validData)
-
-confusionMatrix(predictions, as.factor(validData$Acrididae)) 
 
 ## Matt's consult ML stuff -----------------------------------------------------------
 
-insects_interest <- c("diptera", "delphacidae", "miridae", "coccinellidae",
-                      'nabidae', 'psyllidae', 'scraptiidae', 'melyridae', 'braconidae', 
-                      'microhymenoptera')
+insects_interest <- c("ciccadellidae", "miridae", "melyridae",
+                      'delphacidae', 'aphididae', 'nabidae', 'coccinellidae')
 
 train_control <- trainControl(method = "cv", number = 10, p = 0.7)
 
 response_vars <- c("pseudoroegneria.spicata",
                    "bromus.tectorum", "alopecurus.pratensis", "bromus.inermis", 
-                   'thinopyrum.intermedium.ssp.intermedium', 'arrhenatherum.elatius',
-                   "X", "Y", "non_cereal_crops", "forest_and_tree_crops", "cereal_crops",
-                   "tree_fruit_crops", "development",
-                   "wetland_open_water","pasture_or_barren")
+                   'thinopyrum.intermedium.ssp.intermedium', 'arrhenatherum.elatius')
 
 
 model_data %>%
@@ -168,9 +114,6 @@ model_data %>%
 ml_formula <- as.formula(paste0(insects_interest[4],
                                 "~",
                                 paste(response_vars, collapse = " + ")))
-
-
-
 
 
 training_percentage <- 0.7
